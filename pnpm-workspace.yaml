@@ -1,4 +1,5 @@
 allowBuilds:
+  agent-browser: true
   '@prisma/engines': true
   prisma: true
   sharp: false

@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DateExceptionKind {
+  OPEN
+  BLOCK
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  events        Event[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+model Event {
+  id              String                 @id @default(cuid())
+  token           String                 @unique @db.VarChar(64)
+  ownerId         String
+  owner           User                   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title           String                 @db.VarChar(100)
+  description     String?                @db.VarChar(500)
+  durationMinutes Int
+  startDate       DateTime               @db.Date
+  endDate         DateTime               @db.Date
+  timeZone        String                 @default("America/Santiago") @db.VarChar(64)
+  isActive        Boolean                @default(true)
+  deletedAt       DateTime?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  weekdays        WeeklyDay[]
+  weeklyWindows   WeeklyWindow[]
+  exceptions      DateException[]
+  bookings        Booking[]
+
+  @@index([ownerId, deletedAt, startDate, endDate])
+}
+
+model WeeklyDay {
+  id        String  @id @default(cuid())
+  eventId   String
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  weekday   Int
+  enabled   Boolean @default(false)
+
+  @@unique([eventId, weekday])
+}
+
+model WeeklyWindow {
+  id          String @id @default(cuid())
+  eventId     String
+  event       Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  startMinute Int
+  endMinute   Int
+
+  @@index([eventId])
+}
+
+model DateException {
+  id          String            @id @default(cuid())
+  eventId     String
+  event       Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  date        DateTime          @db.Date
+  kind        DateExceptionKind
+  startMinute Int
+  endMinute   Int
+
+  @@index([eventId, date])
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  eventId   String
+  event     Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  firstName String        @db.VarChar(80)
+  lastName  String        @db.VarChar(80)
+  startAt   DateTime      @db.Timestamptz(3)
+  endAt     DateTime      @db.Timestamptz(3)
+  status    BookingStatus @default(CONFIRMED)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([eventId, status, startAt])
+  @@index([eventId, startAt, endAt])
+}

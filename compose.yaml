@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:17
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-abeto_calendar}
+      POSTGRES_USER: ${POSTGRES_USER:-abeto_calendar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-abeto_calendar_local}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init/01-create-test-database.sql:/docker-entrypoint-initdb.d/01-create-test-database.sql:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
